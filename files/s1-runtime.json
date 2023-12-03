@@ -14,6 +14,7 @@
         "port": 1
       }
     },
+
     {
       "table": "MyIngress.ipv4_lpm",
       "match": {
@@ -25,6 +26,7 @@
         "port": 2
       }
     },
+
     {
       "table": "MyIngress.ipv4_lpm",
       "match": {
@@ -47,6 +49,7 @@
         "port": 1
       }
     },
+
     {
       "table": "MyIngress.myTunnel_exact",
       "match": {
@@ -57,12 +60,46 @@
         "port": 2
       }
     },
+
     {
       "table": "MyIngress.myTunnel_exact",
       "match": {
         "hdr.myTunnel.dst_id": [3]
       },
       "action_name": "MyIngress.myTunnel_forward",
+      "action_params": {
+        "port": 3
+      }
+    },
+
+    {
+      "table": "MyIngress.l2_exact",
+      "match": {
+        "hdr.ethernet.dstAddr": "08:00:00:00:01:11"
+      },
+      "action_name": "MyIngress.l2_forward",
+      "action_params": {
+        "port": 1
+      }
+    },
+
+    {
+      "table": "MyIngress.l2_exact",
+      "match": {
+        "hdr.ethernet.dstAddr": "08:00:00:00:02:22"
+      },
+      "action_name": "MyIngress.l2_forward",
+      "action_params": {
+        "port": 2
+      }
+    },
+    
+    {
+      "table": "MyIngress.l2_exact",
+      "match": {
+        "hdr.ethernet.dstAddr": "08:00:00:00:03:33"
+      },
+      "action_name": "MyIngress.l2_forward",
       "action_params": {
         "port": 3
       }

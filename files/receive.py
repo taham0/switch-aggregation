@@ -11,7 +11,8 @@ class MyTunnel(Packet):
     name = "MyTunnel"
     fields_desc = [
         ShortField("pid", 0),
-        ShortField("dst_id", 0)
+        ShortField("dst_id", 0),
+        LongField("count", 0)
     ]
     def mysummary(self):
         return self.sprintf("pid=%pid%, dst_id=%dst_id%")

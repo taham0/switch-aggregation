@@ -25,6 +25,7 @@ header ethernet_t {
 header myTunnel_t {
     bit<16> proto_id;
     bit<16> dst_id;
+    bit<64> count;
 }
 
 header vector_t {
@@ -49,6 +50,7 @@ header ipv4_t {
 
 struct metadata {
     /* empty */
+    bit<64> count_val;
 }
 
 // NOTE: Added new header type to headers struct
@@ -127,6 +129,7 @@ control MyIngress(inout headers hdr,
     }
 
     register<bit<31>>(4) sum;
+    register<bit<64>>(1) count;
 
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
         standard_metadata.egress_spec = port;
@@ -165,9 +168,39 @@ control MyIngress(inout headers hdr,
         hdr.vector[index].val = temp;
     }
 
+    action increment_count() {
+        // temporary variable for addition
+        bit<64> temp;
+
+        // read register value to temp variable
+        count.read(temp, 0);
+
+        // add vector element in header to temp
+        temp = temp + 1;
+        
+        // write the sum in temp to register
+        count.write(0, temp);
+
+        // send back the new sum value in the header
+        hdr.myTunnel.count = temp;
+    }
+
+    action wipe_sumRegister(bit<32> index) {
+        sum.write(index, 0);
+    }
+
+    action read_count() {
+        count.read(meta.count_val, 0);
+    }
+
     // TODO: declare a new action: myTunnel_forward(egressSpec_t port)
     action myTunnel_forward(egressSpec_t port) {
         standard_metadata.egress_spec = port;
+
+        /* increment packet counter */
+        increment_count();
+
+        read_count();
         
         /* vector aggregation */
         addTwo_elements(0, hdr.vector[0].val);
@@ -190,10 +223,27 @@ control MyIngress(inout headers hdr,
         default_action = drop();
     }
 
+    action l2_forward(egressSpec_t port) {
+        standard_metadata.egress_spec = port;
+    }
+
+    table l2_exact {
+        key = {
+            hdr.ethernet.dstAddr : exact;
+        }
+        actions = {
+            l2_forward;
+            drop;
+        }
+        size = 1024;
+        default_action = drop();
+    }
+
 
     apply {
-        // TODO: Update control flow
-        if (hdr.myTunnel.isValid()) {
+        if (hdr.ethernet.isValid()) {
+            l2_exact.apply();
+        } else if (hdr.myTunnel.isValid()) {
             myTunnel_exact.apply();
         
         } else if (hdr.ipv4.isValid()) {
