@@ -168,6 +168,10 @@ control MyIngress(inout headers hdr,
         hdr.vector[index].val = temp;
     }
 
+    action reset_count() {
+        count.write(0, 0);
+    }
+
     action read_count() {
         count.read(meta.count_val, 0);
     }
@@ -225,6 +229,7 @@ control MyIngress(inout headers hdr,
 
     action multicast() {
         standard_metadata.mcast_grp = 1;
+        reset_count();
     }
 
     table mcast_exact {
