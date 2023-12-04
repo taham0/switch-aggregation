@@ -168,6 +168,10 @@ control MyIngress(inout headers hdr,
         hdr.vector[index].val = temp;
     }
 
+    action read_count() {
+        count.read(meta.count_val, 0);
+    }
+
     action increment_count() {
         // temporary variable for addition
         bit<64> temp;
@@ -183,17 +187,11 @@ control MyIngress(inout headers hdr,
 
         // send back the new sum value in the header
         hdr.myTunnel.count = temp;
+
+        // update count value in header
+        read_count();
     }
 
-    action wipe_sumRegister(bit<32> index) {
-        sum.write(index, 0);
-    }
-
-    action read_count() {
-        count.read(meta.count_val, 0);
-    }
-
-    // TODO: declare a new action: myTunnel_forward(egressSpec_t port)
     action myTunnel_forward(egressSpec_t port) {
         standard_metadata.egress_spec = port;
 
@@ -201,7 +199,9 @@ control MyIngress(inout headers hdr,
         increment_count();
 
         read_count();
-        
+    }
+
+    action aggregate() {
         /* vector aggregation */
         addTwo_elements(0, hdr.vector[0].val);
         addTwo_elements(1, hdr.vector[1].val);
@@ -223,8 +223,25 @@ control MyIngress(inout headers hdr,
         default_action = drop();
     }
 
+    action multicast() {
+        standard_metadata.mcast_grp = 1;
+    }
+
+    table mcast_exact {
+        key = {
+            meta.count_val : exact;
+        }
+        actions = {
+            multicast;
+            drop;
+        }
+        default_action = drop();
+    }
+
     action l2_forward(egressSpec_t port) {
         standard_metadata.egress_spec = port;
+        increment_count();
+        aggregate();
     }
 
     table l2_exact {
@@ -243,6 +260,7 @@ control MyIngress(inout headers hdr,
     apply {
         if (hdr.ethernet.isValid()) {
             l2_exact.apply();
+            mcast_exact.apply();
         } else if (hdr.myTunnel.isValid()) {
             myTunnel_exact.apply();
         
@@ -259,7 +277,16 @@ control MyIngress(inout headers hdr,
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
-    apply {  }
+    
+    action drop() {
+        mark_to_drop(standard_metadata);
+    }
+    
+    apply { 
+        // Prune multicast packet to ingress port to preventing loop
+        if (standard_metadata.egress_port == standard_metadata.ingress_port)
+            drop();
+    }
 }
 
 /*************************************************************************

@@ -103,6 +103,36 @@
       "action_params": {
         "port": 3
       }
+    },
+
+    {
+      "table": "MyIngress.mcast_exact",
+      "match": {
+        "meta.count_val": 2
+      },
+      "action_name": "MyIngress.multicast",
+      "action_params": {
+    
+      }
+    }
+  ],
+  "multicast_group_entries" : [
+    {
+      "multicast_group_id" : 1,
+      "replicas" : [
+        {
+          "egress_port" : 1,
+          "instance" : 1
+        },
+        {
+          "egress_port" : 2,
+          "instance" : 1
+        },
+        {
+          "egress_port" : 3,
+          "instance" : 1
+        }
+      ]
     }
   ]
 }
